@@ -4,6 +4,7 @@ import re
 import sqlite3
 import time
 import asyncio
+import pathlib 
 from contextlib import closing
 from datetime import datetime, timedelta
 from typing import Optional, Tuple
