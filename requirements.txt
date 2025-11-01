@@ -1,0 +1,10 @@
+python-telegram-bot==21.6
+APScheduler==3.10.4
+python-dotenv==1.0.1
+dateparser==1.2.0
+pytz==2024.2
+apscheduler
+python-dotenv
+pytz
+dateparser
+httpx[socks]
