@@ -31,7 +31,9 @@ from telegram.request import HTTPXRequest
 from telegram.error import TimedOut, RetryAfter, NetworkError
 
 # ---------- Константы/тексты ----------
-DB_PATH = os.getenv("DB_PATH", "reminders.db")
+DB_PATH = os.getenv("DB_PATH", "/data/reminders.db")  
+DB_DIR = pathlib.Path(DB_PATH).parent
+DB_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_TZ = "UTC"
 
 BTN_CREATE = "➕ Создать напоминание"
@@ -82,23 +84,33 @@ if not BOT_TOKEN:
 
 # ---------- БД ----------
 def init_db():
-    with closing(sqlite3.connect(DB_PATH)) as conn:
-        c = conn.cursor()
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY,
-            tz TEXT NOT NULL DEFAULT 'UTC'
-        )""")
-        c.execute("""
-        CREATE TABLE IF NOT EXISTS reminders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            chat_id INTEGER NOT NULL,
-            text TEXT NOT NULL,
-            due_ts INTEGER NOT NULL,
-            created_ts INTEGER NOT NULL
-        )""")
-        conn.commit()
+    try:
+        # URI-режим создаст файл, если его нет (mode=rwc)
+        with closing(sqlite3.connect(f"file:{DB_PATH}?mode=rwc", uri=True)) as conn:
+            c = conn.cursor()
+            c.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                user_id INTEGER PRIMARY KEY,
+                tz TEXT NOT NULL DEFAULT 'UTC'
+            )""")
+            c.execute("""
+            CREATE TABLE IF NOT EXISTS reminders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                chat_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                due_ts INTEGER NOT NULL,
+                created_ts INTEGER NOT NULL
+            )""")
+            conn.commit()
+    except sqlite3.OperationalError as e:
+        raise SystemExit(
+            f"❌ Не удалось открыть/создать БД по пути {DB_PATH}.\n"
+            f"Проверь:\n"
+            f"  • Переменную окружения DB_PATH (должна быть /data/reminders.db в Railway)\n"
+            f"  • Что том (Volume) примонтирован на /data и доступен для записи\n"
+            f"Исходная ошибка: {e}"
+        )
 
 def get_user_tz(user_id: int) -> str:
     with closing(sqlite3.connect(DB_PATH)) as conn:
